@@ -37,6 +37,7 @@ const LANGUAGE_KEY: &str = "language";
 const SETTINGS_UPDATED_EVENT: &str = "settings-updated";
 const BATTERY_REFRESH_INTERVAL_SECONDS: u64 = 20;
 const SUPPORTED_LANGUAGES: [&str; 5] = ["de", "en", "es", "fr", "it"];
+const TRAY_ICON_SIZE: u32 = 32;
 
 struct TrayMenuLabels {
     open: &'static str,
@@ -166,6 +167,7 @@ pub fn run() {
             show_after_first_page_load.store(should_show_on_launch, Ordering::SeqCst);
 
             if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_icon(render_tray_battery_icon(None));
                 let handle = app.handle().clone();
                 window.on_window_event(move |event| {
                     match event {
@@ -333,16 +335,11 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
         &[&open, &hide, &refresh, &copy_diagnostics, &settings_submenu, &separator, &quit],
     )?;
 
-    let mut tray_builder = TrayIconBuilder::with_id("main")
+    let tray_builder = TrayIconBuilder::with_id("main")
         .menu(&menu)
         .tooltip("ATK Tray Monitor")
-        .show_menu_on_left_click(false);
-
-    if let Ok(icon) = Image::from_bytes(include_bytes!("../icons/tray.png")) {
-        tray_builder = tray_builder.icon(icon);
-    } else if let Some(icon) = app.default_window_icon().cloned() {
-        tray_builder = tray_builder.icon(icon);
-    }
+        .show_menu_on_left_click(false)
+        .icon(render_tray_battery_icon(None));
 
     tray_builder
         .on_tray_icon_event(|tray, event| {
@@ -724,7 +721,7 @@ fn refresh_snapshot(
     }
 
     let _ = app.emit("battery-updated", &snapshot);
-    update_tray_tooltip(app, &snapshot);
+    update_tray_visuals(app, &snapshot);
 
     Ok(snapshot)
 }
@@ -987,7 +984,9 @@ fn decode_battery_response(response: &Command<GetBatteryStatus>) -> (u8, u8, f32
     (level, charge, voltage)
 }
 
-fn update_tray_tooltip(app: &AppHandle, snapshot: &BatterySnapshot) {
+fn update_tray_visuals(app: &AppHandle, snapshot: &BatterySnapshot) {
+    let icon = render_tray_battery_icon(Some(snapshot));
+
     if let Some(tray) = app.tray_by_id("main") {
         let tooltip = if snapshot.connected {
             format!("ATK Tray Monitor {}%", snapshot.level)
@@ -996,6 +995,101 @@ fn update_tray_tooltip(app: &AppHandle, snapshot: &BatterySnapshot) {
         };
 
         let _ = tray.set_tooltip(Some(tooltip));
+        let _ = tray.set_icon(Some(icon.clone()));
+    }
+
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.set_icon(icon);
+    }
+}
+
+fn render_tray_battery_icon(snapshot: Option<&BatterySnapshot>) -> Image<'static> {
+    let mut rgba = vec![0_u8; (TRAY_ICON_SIZE * TRAY_ICON_SIZE * 4) as usize];
+    let connected = snapshot.map(|value| value.connected).unwrap_or(false);
+    let level = snapshot.map(|value| value.level.min(100)).unwrap_or(0);
+    let is_charging = snapshot.map(|value| value.is_charging).unwrap_or(false);
+    let border = if connected {
+        [236, 240, 241, 255]
+    } else {
+        [148, 163, 184, 255]
+    };
+    let track = if connected {
+        [255, 255, 255, 28]
+    } else {
+        [148, 163, 184, 20]
+    };
+    let fill = if !connected {
+        [100, 116, 139, 180]
+    } else if is_charging {
+        [56, 189, 248, 255]
+    } else if level <= 20 {
+        [248, 113, 113, 255]
+    } else if level <= 50 {
+        [250, 204, 21, 255]
+    } else {
+        [74, 222, 128, 255]
+    };
+
+    stroke_rect(&mut rgba, TRAY_ICON_SIZE, 6, 8, 18, 14, border);
+    fill_rect(&mut rgba, TRAY_ICON_SIZE, 24, 12, 2, 6, border);
+    fill_rect(&mut rgba, TRAY_ICON_SIZE, 8, 10, 14, 10, track);
+
+    let fill_width = if connected {
+        ((level as u32 * 14) + 99) / 100
+    } else {
+        0
+    };
+
+    if fill_width > 0 {
+        fill_rect(&mut rgba, TRAY_ICON_SIZE, 8, 10, fill_width, 10, fill);
+    }
+
+    if is_charging && connected {
+        let bolt = [255, 255, 255, 220];
+        fill_rect(&mut rgba, TRAY_ICON_SIZE, 13, 10, 3, 4, bolt);
+        fill_rect(&mut rgba, TRAY_ICON_SIZE, 12, 14, 3, 3, bolt);
+        fill_rect(&mut rgba, TRAY_ICON_SIZE, 15, 14, 2, 6, bolt);
+    }
+
+    Image::new_owned(rgba, TRAY_ICON_SIZE, TRAY_ICON_SIZE)
+}
+
+fn stroke_rect(
+    rgba: &mut [u8],
+    canvas_size: u32,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    color: [u8; 4],
+) {
+    if width == 0 || height == 0 {
+        return;
+    }
+
+    fill_rect(rgba, canvas_size, x, y, width, 1, color);
+    fill_rect(rgba, canvas_size, x, y + height.saturating_sub(1), width, 1, color);
+    fill_rect(rgba, canvas_size, x, y, 1, height, color);
+    fill_rect(rgba, canvas_size, x + width.saturating_sub(1), y, 1, height, color);
+}
+
+fn fill_rect(
+    rgba: &mut [u8],
+    canvas_size: u32,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    color: [u8; 4],
+) {
+    let max_x = (x + width).min(canvas_size);
+    let max_y = (y + height).min(canvas_size);
+
+    for current_y in y..max_y {
+        for current_x in x..max_x {
+            let offset = ((current_y * canvas_size + current_x) * 4) as usize;
+            rgba[offset..offset + 4].copy_from_slice(&color);
+        }
     }
 }
 

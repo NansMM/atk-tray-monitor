@@ -5,30 +5,30 @@
   "battery": {
     "levelTitle": "Niveau de batterie",
     "historyTitle": "Historique batterie",
-    "historyEmpty": "L'historique s'affichera apres quelques lectures reussies.",
+    "historyEmpty": "L'historique s'affichera après quelques lectures réussies.",
     "fallbackDeviceTitle": "Batterie ATK",
     "genericMouseTitle": "Souris ATK",
     "noInfoStatus": "Aucune information disponible.",
-    "previewStatus": "Mode apercu navigateur. Lance Tauri pour lire la vraie batterie."
+    "previewStatus": "Mode aperçu navigateur. Lance Tauri pour lire la vraie batterie."
   },
   "status": {
     "connecting": "Connexion",
-    "preview": "Apercu",
+    "preview": "Aperçu",
     "offline": "Hors ligne",
     "charging": "Charge",
     "battery": "Batterie"
   },
   "errors": {
-    "syncFailed": "Echec de la synchronisation."
+    "syncFailed": "Échec de la synchronisation."
   },
   "history": {
-    "pointLabel": "{{level}}% a {{time}}",
+    "pointLabel": "{{level}}% à {{time}}",
     "min": "Min {{value}}",
     "max": "Max {{value}}",
     "current": "Actuel {{value}}"
   },
   "notifications": {
     "lowBatteryTitle": "ATK Tray Monitor",
-    "lowBatteryBody": "{{deviceLabel}} est a {{level}}% de batterie."
+    "lowBatteryBody": "{{deviceLabel}} est à {{level}}% de batterie."
   }
 }
