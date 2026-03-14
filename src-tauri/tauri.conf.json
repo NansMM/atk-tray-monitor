@@ -30,6 +30,14 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE3RjMzQzNGNTg0MDdFMUUKUldRZWZrQllQenp6RjRqL1FoMG54WWJLd1AwWTVndE10dXNnM0ttNW9saFBnbXEwb0I3em4zRjkK",
+      "endpoints": [
+        "https://github.com/NansMM/atk-tray-monitor/releases/latest/download/latest.json"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": true,

@@ -79,13 +79,13 @@ https://github.com/NansMM/atk-tray-monitor/releases/latest/download/latest.json
 
 What must exist at build time:
 
-- `TAURI_SIGNING_PRIVATE_KEY` or `TAURI_SIGNING_PRIVATE_KEY_PATH`: private key used by Tauri to sign updater artifacts
+- `TAURI_SIGNING_PRIVATE_KEY`: private key used by Tauri to sign updater artifacts
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: optional password for that private key
 
 Local PowerShell example:
 
 ```powershell
-$env:TAURI_SIGNING_PRIVATE_KEY_PATH = (Resolve-Path .\.secrets\tauri-updater.key).Path
+$env:TAURI_SIGNING_PRIVATE_KEY = Get-Content .\.secrets\tauri-updater.key -Raw
 $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "<your-key-password>"
 npm run tauri:build
 ```
