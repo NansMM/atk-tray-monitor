@@ -5,6 +5,7 @@
   "battery": {
     "levelTitle": "Batteriestand",
     "historyTitle": "Batterieverlauf",
+    "historyWindowLabel": "Letzte Stunde",
     "historyEmpty": "Der Verlauf erscheint nach einigen erfolgreichen Messungen.",
     "fallbackDeviceTitle": "ATK-Batterie",
     "genericMouseTitle": "ATK-Maus",

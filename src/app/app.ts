@@ -21,6 +21,10 @@ type BatteryHistoryPoint = BatteryHistoryEntry & {
 })
 export class App {
   private static readonly HISTORY_LIMIT = 10;
+  private static readonly HISTORY_WINDOW_MS = 60 * 60 * 1000;
+  private static readonly HISTORY_BUCKET_MS = Math.floor(
+    App.HISTORY_WINDOW_MS / App.HISTORY_LIMIT,
+  );
   private static readonly REFRESH_INTERVAL_MS = 20_000;
   private readonly batteryService = inject(BatteryService);
   private readonly destroyRef = inject(DestroyRef);
@@ -309,7 +313,13 @@ export class App {
 
   private async loadBatteryHistory(): Promise<void> {
     const history = await this.batteryService.getBatteryHistory();
-    this.batteryHistory.set(history.slice(-App.HISTORY_LIMIT));
+    const normalizedHistory = this.normalizeHistory(history);
+
+    this.batteryHistory.set(normalizedHistory);
+
+    if (JSON.stringify(normalizedHistory) !== JSON.stringify(history)) {
+      void this.batteryService.setBatteryHistory(normalizedHistory);
+    }
   }
 
   private async loadNotificationPreferences(): Promise<void> {
@@ -363,17 +373,73 @@ export class App {
       return;
     }
 
-    const nextHistory = [
-      ...history,
-      {
-        level: snapshot.level,
-        updatedAt: snapshot.updatedAt,
-      },
-    ].slice(-App.HISTORY_LIMIT);
+    const nextHistory = this.normalizeHistory(
+      [
+        ...history,
+        {
+          level: snapshot.level,
+          updatedAt: snapshot.updatedAt,
+        },
+      ],
+      this.toTimestamp(snapshot.updatedAt) ?? Date.now(),
+    );
 
     this.batteryHistory.set(nextHistory);
 
     void this.batteryService.setBatteryHistory(nextHistory);
+  }
+
+  private normalizeHistory(
+    history: BatteryHistoryEntry[],
+    referenceTimeMs = Date.now(),
+  ): BatteryHistoryEntry[] {
+    const cutoffTimeMs = referenceTimeMs - App.HISTORY_WINDOW_MS;
+    const compacted = history
+      .map((entry) => ({
+        entry: {
+          level: Math.max(0, Math.min(100, Math.round(entry.level))),
+          updatedAt: entry.updatedAt,
+        },
+        timestamp: this.toTimestamp(entry.updatedAt),
+      }))
+      .filter(
+        (
+          item,
+        ): item is { entry: BatteryHistoryEntry; timestamp: number } => item.timestamp !== null,
+      )
+      .filter((item) => item.timestamp >= cutoffTimeMs)
+      .sort((left, right) => left.timestamp - right.timestamp)
+      .reduce<Array<{ entry: BatteryHistoryEntry; bucket: number }>>((result, item) => {
+        const bucket = this.historyBucketFor(item.timestamp, cutoffTimeMs);
+        const previous = result.at(-1);
+
+        if (previous?.bucket === bucket) {
+          previous.entry = item.entry;
+          return result;
+        }
+
+        result.push({
+          entry: item.entry,
+          bucket,
+        });
+        return result;
+      }, []);
+
+    return compacted.slice(-App.HISTORY_LIMIT).map((item) => item.entry);
+  }
+
+  private historyBucketFor(timestampMs: number, cutoffTimeMs: number): number {
+    const elapsed = Math.max(0, timestampMs - cutoffTimeMs);
+    return Math.min(
+      App.HISTORY_LIMIT - 1,
+      Math.floor(elapsed / App.HISTORY_BUCKET_MS),
+    );
+  }
+
+  private toTimestamp(value: string): number | null {
+    const timestamp = Date.parse(value);
+
+    return Number.isNaN(timestamp) ? null : timestamp;
   }
 
   protected historyPointLabel(level: number, timeLabel: string): string {

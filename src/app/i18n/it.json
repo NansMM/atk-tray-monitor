@@ -5,6 +5,7 @@
   "battery": {
     "levelTitle": "Livello batteria",
     "historyTitle": "Cronologia batteria",
+    "historyWindowLabel": "Ultima ora",
     "historyEmpty": "La cronologia apparira dopo alcune letture riuscite.",
     "fallbackDeviceTitle": "Batteria ATK",
     "genericMouseTitle": "Mouse ATK",
