@@ -16,7 +16,8 @@ use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     webview::PageLoadEvent,
-    AppHandle, Emitter, Manager, PhysicalPosition, Position, State, WindowEvent,
+    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, State,
+    WindowEvent,
 };
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
 use tauri_plugin_store::StoreExt;
@@ -38,6 +39,7 @@ const SETTINGS_UPDATED_EVENT: &str = "settings-updated";
 const BATTERY_REFRESH_INTERVAL_SECONDS: u64 = 20;
 const SUPPORTED_LANGUAGES: [&str; 5] = ["de", "en", "es", "fr", "it"];
 const TRAY_ICON_SIZE: u32 = 32;
+const MAIN_WINDOW_WIDTH: f64 = 420.0;
 
 struct TrayMenuLabels {
     open: &'static str,
@@ -117,6 +119,22 @@ fn hide_window(app: AppHandle) -> Result<(), String> {
 #[tauri::command]
 fn show_window(app: AppHandle) -> Result<(), String> {
     show_main_window(&app)
+}
+
+#[tauri::command]
+fn fit_window_to_content(app: AppHandle, content_height: f64) -> Result<(), String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "Fenetre principale introuvable.".to_string())?;
+    let scale_factor = window.scale_factor().map_err(|error| error.to_string())?;
+    let target_height = content_height.max(1.0);
+    let target_physical_size = (MAIN_WINDOW_WIDTH * scale_factor, target_height * scale_factor);
+
+    window
+        .set_size(Size::Logical(LogicalSize::new(MAIN_WINDOW_WIDTH, target_height)))
+        .map_err(|error| error.to_string())?;
+
+    position_window_near_tray(&app, &window, None, Some(target_physical_size))
 }
 
 pub fn run() {
@@ -202,7 +220,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             refresh_battery_status,
             hide_window,
-            show_window
+            show_window,
+            fit_window_to_content
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -584,7 +603,7 @@ fn toggle_window(app: &AppHandle, tray_rect: Option<tauri::Rect>) -> Result<(), 
     if window.is_visible().map_err(|error| error.to_string())? {
         window.hide().map_err(|error| error.to_string())
     } else {
-        position_window_near_tray(app, &window, tray_rect)?;
+        position_window_near_tray(app, &window, tray_rect, None)?;
         window.show().map_err(|error| error.to_string())?;
         window.set_focus().map_err(|error| error.to_string())
     }
@@ -595,7 +614,7 @@ fn show_main_window(app: &AppHandle) -> Result<(), String> {
         .get_webview_window("main")
         .ok_or_else(|| "Fenetre principale introuvable.".to_string())?;
 
-    position_window_near_tray(app, &window, None)?;
+    position_window_near_tray(app, &window, None, None)?;
     window.show().map_err(|error| error.to_string())?;
     window.unminimize().map_err(|error| error.to_string())?;
     window.set_focus().map_err(|error| error.to_string())
@@ -613,9 +632,9 @@ fn position_window_near_tray(
     app: &AppHandle,
     window: &tauri::WebviewWindow,
     tray_rect: Option<tauri::Rect>,
+    window_size_override: Option<(f64, f64)>,
 ) -> Result<(), String> {
     let scale_factor = window.scale_factor().map_err(|error| error.to_string())?;
-    let window_size = window.outer_size().map_err(|error| error.to_string())?;
     let tray_rect = match tray_rect {
         Some(rect) => Some(rect),
         None => app
@@ -631,10 +650,17 @@ fn position_window_near_tray(
     let tray_y = position_to_physical_y(tray_rect.position, scale_factor);
     let tray_width = size_to_physical_width(tray_rect.size, scale_factor);
     let tray_height = size_to_physical_height(tray_rect.size, scale_factor);
+    let (window_width, window_height) = match window_size_override {
+        Some(size) => size,
+        None => {
+            let window_size = window.outer_size().map_err(|error| error.to_string())?;
+            (window_size.width as f64, window_size.height as f64)
+        }
+    };
     let margin = 12.0;
-    let mut target_x = tray_x + (tray_width / 2.0) - (window_size.width as f64 / 2.0);
-    let mut target_y = if tray_y > window_size.height as f64 + margin {
-        tray_y - window_size.height as f64 - margin
+    let mut target_x = tray_x + (tray_width / 2.0) - (window_width / 2.0);
+    let mut target_y = if tray_y > window_height + margin {
+        tray_y - window_height - margin
     } else {
         tray_y + tray_height + margin
     };
@@ -644,8 +670,8 @@ fn position_window_near_tray(
         let monitor_size = monitor.size();
         let min_x = monitor_position.x as f64;
         let min_y = monitor_position.y as f64;
-        let max_x = (monitor_position.x + monitor_size.width as i32) as f64 - window_size.width as f64;
-        let max_y = (monitor_position.y + monitor_size.height as i32) as f64 - window_size.height as f64;
+        let max_x = (monitor_position.x + monitor_size.width as i32) as f64 - window_width;
+        let max_y = (monitor_position.y + monitor_size.height as i32) as f64 - window_height;
 
         target_x = target_x.clamp(min_x, max_x.max(min_x));
         target_y = target_y.clamp(min_y, max_y.max(min_y));

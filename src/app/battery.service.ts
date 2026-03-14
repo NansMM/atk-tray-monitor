@@ -68,6 +68,18 @@ export class BatteryService {
     }
   }
 
+  async fitWindowToContent(contentHeight: number): Promise<void> {
+    const normalizedHeight = Math.max(1, Math.ceil(contentHeight));
+
+    try {
+      await invoke('fit_window_to_content', {
+        contentHeight: normalizedHeight,
+      });
+    } catch {
+      return;
+    }
+  }
+
   async getLaunchOnStartup(): Promise<boolean> {
     try {
       return await isAutostartEnabled();

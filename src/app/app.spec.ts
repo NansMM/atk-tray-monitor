@@ -33,6 +33,7 @@ function createBatteryServiceStub(): Pick<
   | 'getStartMinimizedOnAutostart'
   | 'getLowBatteryNotificationsEnabled'
   | 'getLowBatteryThreshold'
+  | 'fitWindowToContent'
   | 'setBatteryHistory'
   | 'sendLowBatteryNotification'
 > {
@@ -45,6 +46,7 @@ function createBatteryServiceStub(): Pick<
     getStartMinimizedOnAutostart: async () => true,
     getLowBatteryNotificationsEnabled: async () => true,
     getLowBatteryThreshold: async () => 20,
+    fitWindowToContent: async () => undefined,
     setBatteryHistory: async () => undefined,
     sendLowBatteryNotification: async () => false,
   };

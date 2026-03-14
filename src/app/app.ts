@@ -1,5 +1,15 @@
 import { NgClass } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  ElementRef,
+  afterNextRender,
+  computed,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
 import { BatteryService } from './battery.service';
@@ -29,7 +39,10 @@ export class App {
   private readonly batteryService = inject(BatteryService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly i18n = inject(I18nService);
+  private readonly contentRoot = viewChild.required<ElementRef<HTMLElement>>('contentRoot');
   private readonly ringLength = 339.292;
+  private lastSyncedWindowHeight = 0;
+  private resizeFrameId: number | null = null;
 
   protected readonly battery = signal<BatterySnapshot | null>(null);
   protected readonly batteryHistory = signal<BatteryHistoryEntry[]>([]);
@@ -202,6 +215,75 @@ export class App {
     void this.loadBatteryHistory();
     void this.loadStartupPreference();
     void this.loadNotificationPreferences();
+
+    afterNextRender(() => {
+      this.bindWindowHeightSync();
+    });
+  }
+
+  private bindWindowHeightSync(): void {
+    const contentRoot = this.contentRoot().nativeElement;
+
+    this.scheduleWindowHeightSync();
+
+    if (typeof ResizeObserver === 'undefined') {
+      this.destroyRef.onDestroy(() => {
+        this.cancelScheduledWindowHeightSync();
+      });
+      return;
+    }
+
+    const resizeObserver = new ResizeObserver(() => {
+      this.scheduleWindowHeightSync();
+    });
+
+    resizeObserver.observe(contentRoot);
+
+    this.destroyRef.onDestroy(() => {
+      resizeObserver.disconnect();
+      this.cancelScheduledWindowHeightSync();
+    });
+  }
+
+  private scheduleWindowHeightSync(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    this.cancelScheduledWindowHeightSync();
+
+    const syncWindowHeight = () => {
+      this.resizeFrameId = null;
+      const contentHeight = Math.ceil(
+        this.contentRoot().nativeElement.getBoundingClientRect().height,
+      );
+
+      if (Math.abs(contentHeight - this.lastSyncedWindowHeight) <= 1) {
+        return;
+      }
+
+      this.lastSyncedWindowHeight = contentHeight;
+      void this.batteryService.fitWindowToContent(contentHeight);
+    };
+
+    if (typeof window.requestAnimationFrame !== 'function') {
+      syncWindowHeight();
+      return;
+    }
+
+    this.resizeFrameId = window.requestAnimationFrame(syncWindowHeight);
+  }
+
+  private cancelScheduledWindowHeightSync(): void {
+    if (typeof window === 'undefined' || this.resizeFrameId === null) {
+      return;
+    }
+
+    if (typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(this.resizeFrameId);
+    }
+
+    this.resizeFrameId = null;
   }
 
   protected async refresh(showLoader: boolean): Promise<void> {
