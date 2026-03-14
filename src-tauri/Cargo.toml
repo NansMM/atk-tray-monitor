@@ -1,0 +1,29 @@
+[package]
+name = "atk-tray-monitor"
+version = "0.1.0"
+description = "System-tray focused battery monitor for ATK F1 mice"
+authors = ["GitHub Copilot"]
+edition = "2021"
+
+[lib]
+name = "atk_tray_monitor_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+arboard = "3"
+hidapi = "2"
+libatk-rs = { git = "https://github.com/cyberphantom52/libatk-rs", branch = "main" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-store = "2"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

@@ -1,0 +1,39 @@
+:host {
+	display: block;
+	min-height: 100dvh;
+}
+
+.eyebrow-title {
+	font-size: 0.65rem;
+	letter-spacing: 0.4em;
+	text-transform: uppercase;
+}
+
+.section-title {
+	font-size: 0.68rem;
+	letter-spacing: 0.34em;
+	text-transform: uppercase;
+	color: rgb(148 163 184);
+}
+
+section,
+article,
+button {
+	animation: rise 360ms ease-out;
+}
+
+svg circle {
+	transition: stroke-dashoffset 220ms ease;
+}
+
+@keyframes rise {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
