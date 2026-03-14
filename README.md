@@ -66,6 +66,13 @@ Build desktop:
 npm run tauri:build
 ```
 
+## GitHub Actions
+
+- `CI` se lance sur chaque `push` vers `main` et sur chaque `pull_request`.
+- Ce workflow installe Node.js 22 et Rust stable, puis execute `npm run build` et `cargo check --manifest-path src-tauri/Cargo.toml`.
+- `Release Desktop` se lance manuellement ou sur un tag `v*` comme `v0.1.0`.
+- Ce workflow produit les bundles Windows Tauri (`.msi` et installateur NSIS `.exe`), les publie en artefacts, et les attache automatiquement a la release GitHub sur les tags.
+
 ## Notes
 
 - Un mode preview navigateur reste disponible pour travailler l'UI sans runtime Tauri.
