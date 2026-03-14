@@ -6,7 +6,7 @@
     "levelTitle": "Battery level",
     "historyTitle": "Battery history",
     "historyEmpty": "History will appear after a few successful readings.",
-    "fallbackDeviceTitle": "F1 Battery",
+    "fallbackDeviceTitle": "ATK Battery",
     "noInfoStatus": "No information available.",
     "previewStatus": "Browser preview mode. Launch Tauri to read the real battery."
   },

@@ -6,7 +6,7 @@
     "levelTitle": "Batteriestand",
     "historyTitle": "Batterieverlauf",
     "historyEmpty": "Der Verlauf erscheint nach einigen erfolgreichen Messungen.",
-    "fallbackDeviceTitle": "F1-Batterie",
+    "fallbackDeviceTitle": "ATK-Batterie",
     "noInfoStatus": "Keine Informationen verfugbar.",
     "previewStatus": "Browser-Vorschaumodus. Starte Tauri, um die echte Batterie auszulesen."
   },

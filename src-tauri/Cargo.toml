@@ -1,7 +1,7 @@
 [package]
 name = "atk-tray-monitor"
 version = "0.1.0"
-description = "System-tray focused battery monitor for ATK F1 mice"
+description = "System-tray focused battery monitor for ATK-compatible mice"
 authors = ["GitHub Copilot"]
 edition = "2021"
 

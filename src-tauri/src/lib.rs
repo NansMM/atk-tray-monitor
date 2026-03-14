@@ -21,10 +21,12 @@ use tauri::{
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
 use tauri_plugin_store::StoreExt;
 
-const DEVICE_KEYWORDS: [&str; 4] = ["atk", "f1", "vxe", "mouse"];
-const DEFAULT_DEVICE_LABEL: &str = "ATK F1";
-const FRIENDLY_F1_LABEL: &str = "ATK F1 LEVIATAN";
+const DEVICE_KEYWORDS: [&str; 4] = ["atk", "vxe", "leviatan", "mad r"];
+const DEFAULT_DEVICE_LABEL: &str = "ATK device";
 const KNOWN_DEVICE_IDS: [(u16, u16); 2] = [(0x373B, 0x1031), (0x373B, 0x105B)];
+const KNOWN_VENDOR_IDS: [u16; 1] = [0x373B];
+const ATK_USAGE_PAGE: u16 = 0xFF00;
+const ATK_USAGE: u16 = 0x0001;
 const AUTOSTART_FLAG: &str = "--autostart";
 const SETTINGS_FILE: &str = "settings.json";
 const START_MINIMIZED_KEY: &str = "startMinimizedOnAutostart";
@@ -780,9 +782,11 @@ fn locate_candidates() -> Result<Vec<DeviceCandidate>, String> {
         let usage_page = device.usage_page();
         let usage = device.usage();
         let known_id = KNOWN_DEVICE_IDS.contains(&(vendor_id, product_id));
+        let known_vendor = KNOWN_VENDOR_IDS.contains(&vendor_id);
         let keyword_match = DEVICE_KEYWORDS.iter().any(|keyword| combined.contains(keyword));
+        let protocol_shape_match = usage_page == ATK_USAGE_PAGE && usage == ATK_USAGE;
 
-        if !(known_id || keyword_match) {
+        if !(known_id || known_vendor || keyword_match || protocol_shape_match) {
             continue;
         }
 
@@ -790,12 +794,16 @@ fn locate_candidates() -> Result<Vec<DeviceCandidate>, String> {
             continue;
         }
 
-        let score = score_candidate(known_id, usage_page, usage, &combined);
+        let score = score_candidate(known_id, known_vendor, usage_page, usage, &combined);
 
         let label = format!(
             "{} {} [{:04X}:{:04X} u{:04X}:{:04X}]",
-            device.manufacturer_string().unwrap_or(if known_id { "ATK" } else { "HID" }),
-            device.product_string().unwrap_or(if known_id { "F1" } else { "Device" }),
+            device
+                .manufacturer_string()
+                .unwrap_or(if known_id || known_vendor { "ATK" } else { "HID" }),
+            device
+                .product_string()
+                .unwrap_or(if known_id || known_vendor { "Device" } else { "Device" }),
             vendor_id,
             product_id,
             usage_page,
@@ -825,7 +833,7 @@ fn locate_candidates() -> Result<Vec<DeviceCandidate>, String> {
     });
 
     if candidates.is_empty() {
-        Err("Aucun peripherique ATK/VXE/F1 detecte sur le bus HID. Windows expose pourtant souvent la F1 en VID_373B avec PID_1031 ou PID_105B.".to_string())
+        Err("Aucun peripherique ATK compatible detecte sur le bus HID. Branchez le dongle ou le cable, puis relancez le diagnostic pour inspecter les interfaces exposees.".to_string())
     } else {
         Ok(candidates)
     }
@@ -883,10 +891,7 @@ fn query_device(candidate: &DeviceCandidate) -> Result<BatterySnapshot, String> 
 }
 
 fn friendly_device_label(candidate: &DeviceCandidate) -> String {
-    match (candidate.vendor_id, candidate.product_id) {
-        (0x373B, 0x1031) | (0x373B, 0x105B) => FRIENDLY_F1_LABEL.to_string(),
-        _ => sanitize_device_label(&candidate.label),
-    }
+    sanitize_device_label(&candidate.label)
 }
 
 fn sanitize_device_label(label: &str) -> String {
@@ -907,23 +912,40 @@ fn sanitize_device_label(label: &str) -> String {
     }
 }
 
-fn score_candidate(known_id: bool, usage_page: u16, usage: u16, combined: &str) -> u8 {
+fn score_candidate(
+    known_id: bool,
+    known_vendor: bool,
+    usage_page: u16,
+    usage: u16,
+    combined: &str,
+) -> u8 {
     let mut score = 0;
 
     if known_id {
         score += 100;
     }
 
-    if usage_page == 0xFF00 {
+    if known_vendor {
+        score += 60;
+    }
+
+    if usage_page == ATK_USAGE_PAGE {
         score += 30;
     }
 
-    if usage == 0x0001 {
+    if usage == ATK_USAGE {
         score += 20;
     }
 
-    if combined.contains("atk") || combined.contains("vxe") || combined.contains("f1") {
-        score += 10;
+    if usage_page == ATK_USAGE_PAGE && usage == ATK_USAGE {
+        score += 20;
+    }
+
+    if DEVICE_KEYWORDS
+        .iter()
+        .any(|keyword| combined.contains(keyword))
+    {
+        score += 15;
     }
 
     score

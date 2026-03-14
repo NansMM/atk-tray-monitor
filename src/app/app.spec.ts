@@ -11,11 +11,11 @@ const previewSnapshot: BatterySnapshot = {
   isCharging: false,
   connected: true,
   status: 'Browser preview mode. Launch Tauri to read the real battery.',
-  deviceLabel: 'ATK F1 preview',
+  deviceLabel: 'ATK device preview',
   updatedAt: '2026-03-14T10:00:00.000Z',
   source: 'browser-preview',
   diagnostics: {
-    selectedCandidate: 'ATK F1 preview',
+    selectedCandidate: 'ATK device preview',
     candidateCount: 1,
     candidates: [],
     lastError: null,
@@ -75,6 +75,6 @@ describe('App', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('ATK F1 PREVIEW');
+    expect(compiled.querySelector('h1')?.textContent).toContain('ATK DEVICE PREVIEW');
   });
 });

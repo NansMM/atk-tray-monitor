@@ -200,7 +200,7 @@ export class BatteryService {
       voltage: Number(snapshot.voltage ?? 0),
       updatedAt,
       source: snapshot.source ?? 'browser-preview',
-      deviceLabel: snapshot.deviceLabel ?? 'ATK F1',
+      deviceLabel: snapshot.deviceLabel ?? 'ATK device',
       status: snapshot.status ?? this.i18n.t('battery.noInfoStatus'),
       connected: Boolean(snapshot.connected),
       isCharging: Boolean(snapshot.isCharging),
@@ -222,11 +222,11 @@ export class BatteryService {
       isCharging: false,
       connected: true,
       status: this.i18n.t('battery.previewStatus'),
-      deviceLabel: 'ATK F1 preview',
+      deviceLabel: 'ATK device preview',
       updatedAt: new Date().toISOString(),
       source: 'browser-preview',
       diagnostics: {
-        selectedCandidate: 'ATK F1 preview',
+        selectedCandidate: 'ATK device preview',
         candidateCount: 1,
         candidates: [
           {
@@ -234,7 +234,7 @@ export class BatteryService {
             productId: 0x1031,
             usagePage: 0xff00,
             usage: 0x0001,
-            label: 'ATK F1 preview [373B:1031 uFF00:0001]',
+            label: 'ATK device preview [373B:1031 uFF00:0001]',
             score: 160,
           },
         ],

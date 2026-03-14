@@ -6,7 +6,7 @@
     "levelTitle": "Nivel de bateria",
     "historyTitle": "Historial de bateria",
     "historyEmpty": "El historial aparecera despues de varias lecturas correctas.",
-    "fallbackDeviceTitle": "Bateria F1",
+    "fallbackDeviceTitle": "Bateria ATK",
     "noInfoStatus": "No hay informacion disponible.",
     "previewStatus": "Modo de vista previa del navegador. Inicia Tauri para leer la bateria real."
   },

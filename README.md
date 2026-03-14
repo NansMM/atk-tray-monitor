@@ -1,6 +1,6 @@
 # atk-tray-monitor
 
-Lightweight Windows application for monitoring the battery of an ATK F1 / LEVIATAN mouse with a minimal interface and a tray-first integration.
+Lightweight Windows application for monitoring the battery of ATK-compatible mice with a minimal interface and a tray-first integration.
 
 ## Stack
 
@@ -12,7 +12,7 @@ Lightweight Windows application for monitoring the battery of an ATK F1 / LEVIAT
 
 ## Current interface
 
-- Dynamic title based on the detected mouse, with a cleaned product name such as `ATK F1 LEVIATAN`
+- Dynamic title based on the detected mouse, with a cleaned product name when the HID interface exposes one
 - Compact one-line status tag: `Charging`, `Battery`, `Offline`, `Connecting`, `Preview`
 - Battery level with a circular gauge
 - Small persistent battery history across launches
@@ -29,7 +29,7 @@ Lightweight Windows application for monitoring the battery of an ATK F1 / LEVIAT
 
 ## Battery reading
 
-- Heuristic detection of ATK/VXE/F1 devices through HID
+- Heuristic detection of ATK-compatible HID devices, prioritizing ATK vendor interfaces and the reverse-engineered protocol signature used by `libatk-rs`
 - Battery reading through `libatk-rs`
 - Automatic refresh every 20 seconds on both frontend and backend
 - Defensive normalization of abnormal jumps observed when plugging in during charging
