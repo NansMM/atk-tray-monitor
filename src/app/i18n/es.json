@@ -1,0 +1,33 @@
+{
+  "app": {
+    "name": "ATK tray monitor"
+  },
+  "battery": {
+    "levelTitle": "Nivel de bateria",
+    "historyTitle": "Historial de bateria",
+    "historyEmpty": "El historial aparecera despues de varias lecturas correctas.",
+    "fallbackDeviceTitle": "Bateria F1",
+    "noInfoStatus": "No hay informacion disponible.",
+    "previewStatus": "Modo de vista previa del navegador. Inicia Tauri para leer la bateria real."
+  },
+  "status": {
+    "connecting": "Conectando",
+    "preview": "Vista previa",
+    "offline": "Sin conexion",
+    "charging": "Cargando",
+    "battery": "Bateria"
+  },
+  "errors": {
+    "syncFailed": "La sincronizacion ha fallado."
+  },
+  "history": {
+    "pointLabel": "{{level}}% a las {{time}}",
+    "min": "Min {{value}}",
+    "max": "Max {{value}}",
+    "current": "Actual {{value}}"
+  },
+  "notifications": {
+    "lowBatteryTitle": "ATK Tray Monitor",
+    "lowBatteryBody": "{{deviceLabel}} esta al {{level}}% de bateria."
+  }
+}

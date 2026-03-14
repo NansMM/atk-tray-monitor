@@ -1,6 +1,6 @@
 # atk-tray-monitor
 
-Application Windows legere pour suivre la batterie d'une souris ATK F1 / LEVIATAN avec une interface minimale et une integration tray prioritaire.
+Lightweight Windows application for monitoring the battery of an ATK F1 / LEVIATAN mouse with a minimal interface and a tray-first integration.
 
 ## Stack
 
@@ -8,59 +8,59 @@ Application Windows legere pour suivre la batterie d'une souris ATK F1 / LEVIATA
 - Tailwind CSS 4
 - Tauri 2
 - Rust
-- `libatk-rs` pour la communication HID ATK
+- `libatk-rs` for ATK HID communication
 
-## Interface actuelle
+## Current interface
 
-- Titre dynamique base sur la souris detectee, avec un nom produit nettoye comme `ATK F1 LEVIATAN`
-- Tag de status compact sur une seule ligne: `Charge`, `Batterie`, `Hors ligne`, `Connexion`, `Preview`
-- Niveau de batterie avec jauge circulaire
-- Petit historique batterie persistant entre les lancements
-- Fenetre compacte pensee pour etre ouverte depuis l'icone tray, puis masquee automatiquement
+- Dynamic title based on the detected mouse, with a cleaned product name such as `ATK F1 LEVIATAN`
+- Compact one-line status tag: `Charging`, `Battery`, `Offline`, `Connecting`, `Preview`
+- Battery level with a circular gauge
+- Small persistent battery history across launches
+- Compact window designed to be opened from the tray icon, then automatically hidden
 
-## Comportement desktop
+## Desktop behavior
 
-- Application tray-first sous Windows
-- Fenetre principale masquee au lieu d'etre fermee
-- Instance unique
-- Lancement automatique optionnel avec Windows
-- Reglages principaux dans le menu tray
-- Notifications de batterie faible configurables
+- Tray-first application on Windows
+- Main window is hidden instead of being closed
+- Single-instance behavior
+- Optional auto-start with Windows
+- Main settings exposed in the tray menu
+- Configurable low-battery notifications
 
-## Lecture batterie
+## Battery reading
 
-- Detection heuristique des peripheriques ATK/VXE/F1 via HID
-- Lecture batterie via `libatk-rs`
-- Rafraichissement automatique toutes les 20 secondes cote frontend et backend
-- Normalisation defensive des sauts aberrants observes au branchement pendant la charge
+- Heuristic detection of ATK/VXE/F1 devices through HID
+- Battery reading through `libatk-rs`
+- Automatic refresh every 20 seconds on both frontend and backend
+- Defensive normalization of abnormal jumps observed when plugging in during charging
 
-## Prerequis
+## Prerequisites
 
-1. Node.js LTS recommande
+1. Recommended Node.js LTS
 2. Rust via `rustup`
-3. Visual Studio Build Tools avec le workload C++ Desktop
+3. Visual Studio Build Tools with the Desktop C++ workload
 
-## Developpement
+## Development
 
-Frontend seul:
+Frontend only:
 
 ```bash
 npm start
 ```
 
-Application Tauri:
+Tauri application:
 
 ```bash
 npm run tauri:dev
 ```
 
-Build frontend:
+Frontend build:
 
 ```bash
 npm run build
 ```
 
-Build desktop:
+Desktop build:
 
 ```bash
 npm run tauri:build
@@ -68,16 +68,16 @@ npm run tauri:build
 
 ## GitHub Actions
 
-- `CI` se lance sur chaque `push` vers `main` et sur chaque `pull_request`.
-- Ce workflow installe Node.js 22 et Rust stable, puis execute `npm run build` et `cargo check --manifest-path src-tauri/Cargo.toml`.
-- `Release Desktop` se lance manuellement ou sur un tag `v*` comme `v0.1.0`.
-- Ce workflow produit les bundles Windows Tauri (`.msi` et installateur NSIS `.exe`), les publie en artefacts, et les attache automatiquement a la release GitHub sur les tags.
+- `CI` runs on every `push` to `main` and on every `pull_request`.
+- This workflow installs Node.js 22 and stable Rust, then runs `npm run build` and `cargo check --manifest-path src-tauri/Cargo.toml`.
+- `Release Desktop` runs manually or on a `v*` tag such as `v0.1.0`.
+- This workflow builds the Windows Tauri bundles (`.msi` and NSIS `.exe` installer), publishes them as artifacts, and automatically attaches them to the GitHub release on tags.
 
 ## Notes
 
-- Un mode preview navigateur reste disponible pour travailler l'UI sans runtime Tauri.
-- Si un nom HID brut de dongle remonte, le backend le remappe vers un nom produit plus lisible pour l'interface.
+- A browser preview mode remains available to work on the UI without the Tauri runtime.
+- If a raw HID dongle name is returned, the backend remaps it to a more readable product name for the interface.
 
-## Licence
+## License
 
-Le backend utilise `libatk-rs`, qui est sous GPL-3.0. Si tu veux distribuer l'application en proprietaire, il faudra accepter cette contrainte ou remplacer cette dependance par une implementation maison ou une alternative plus permissive.
+The backend uses `libatk-rs`, which is licensed under GPL-3.0. If you want to distribute the application as proprietary software, you will need to accept that constraint or replace this dependency with an in-house implementation or a more permissive alternative.

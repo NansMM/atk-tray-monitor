@@ -30,8 +30,24 @@ const SETTINGS_FILE: &str = "settings.json";
 const START_MINIMIZED_KEY: &str = "startMinimizedOnAutostart";
 const LOW_BATTERY_NOTIFICATIONS_KEY: &str = "lowBatteryNotifications";
 const LOW_BATTERY_THRESHOLD_KEY: &str = "lowBatteryThreshold";
+const LANGUAGE_KEY: &str = "language";
 const SETTINGS_UPDATED_EVENT: &str = "settings-updated";
 const BATTERY_REFRESH_INTERVAL_SECONDS: u64 = 20;
+const SUPPORTED_LANGUAGES: [&str; 5] = ["de", "en", "es", "fr", "it"];
+
+struct TrayMenuLabels {
+    open: &'static str,
+    hide: &'static str,
+    refresh: &'static str,
+    copy_diagnostics: &'static str,
+    launch_on_startup: &'static str,
+    start_minimized: &'static str,
+    low_battery_notifications: &'static str,
+    language: &'static str,
+    threshold: &'static str,
+    settings: &'static str,
+    quit: &'static str,
+}
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -188,20 +204,24 @@ pub fn run() {
 }
 
 fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
-    let open = MenuItem::with_id(app, "open", "Ouvrir", true, None::<&str>)?;
-    let hide = MenuItem::with_id(app, "hide", "Masquer", true, None::<&str>)?;
-    let refresh = MenuItem::with_id(app, "refresh", "Actualiser", true, None::<&str>)?;
+    let current_language = load_string_setting(app.handle(), LANGUAGE_KEY)
+        .filter(|value| SUPPORTED_LANGUAGES.contains(&value.as_str()))
+        .unwrap_or_else(|| "en".to_string());
+    let labels = tray_menu_labels(&current_language);
+    let open = MenuItem::with_id(app, "open", labels.open, true, None::<&str>)?;
+    let hide = MenuItem::with_id(app, "hide", labels.hide, true, None::<&str>)?;
+    let refresh = MenuItem::with_id(app, "refresh", labels.refresh, true, None::<&str>)?;
     let copy_diagnostics = MenuItem::with_id(
         app,
         "copy_diagnostics",
-        "Copier le diagnostic",
+        labels.copy_diagnostics,
         true,
         None::<&str>,
     )?;
     let launch_on_startup = CheckMenuItem::with_id(
         app,
         "settings_launch_on_startup",
-        "Lancer avec Windows",
+        labels.launch_on_startup,
         true,
         autostart_enabled(app.handle()),
         None::<&str>,
@@ -209,7 +229,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
     let start_minimized = CheckMenuItem::with_id(
         app,
         "settings_start_minimized",
-        "Demarrage discret",
+        labels.start_minimized,
         true,
         load_bool_setting(app.handle(), START_MINIMIZED_KEY, true),
         None::<&str>,
@@ -217,13 +237,59 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
     let low_battery_notifications = CheckMenuItem::with_id(
         app,
         "settings_low_battery_notifications",
-        "Notifications batterie faible",
+        labels.low_battery_notifications,
         true,
         load_bool_setting(app.handle(), LOW_BATTERY_NOTIFICATIONS_KEY, true),
         None::<&str>,
     )?;
     let threshold_values = [5_u8, 10, 15, 20, 25, 30, 40, 50];
     let current_threshold = load_u8_setting(app.handle(), LOW_BATTERY_THRESHOLD_KEY, 20);
+    let language_de = CheckMenuItem::with_id(
+        app,
+        "settings_language_de",
+        "Deutsch",
+        true,
+        current_language == "de",
+        None::<&str>,
+    )?;
+    let language_en = CheckMenuItem::with_id(
+        app,
+        "settings_language_en",
+        "English",
+        true,
+        current_language == "en",
+        None::<&str>,
+    )?;
+    let language_es = CheckMenuItem::with_id(
+        app,
+        "settings_language_es",
+        "Espanol",
+        true,
+        current_language == "es",
+        None::<&str>,
+    )?;
+    let language_fr = CheckMenuItem::with_id(
+        app,
+        "settings_language_fr",
+        "Francais",
+        true,
+        current_language == "fr",
+        None::<&str>,
+    )?;
+    let language_it = CheckMenuItem::with_id(
+        app,
+        "settings_language_it",
+        "Italiano",
+        true,
+        current_language == "it",
+        None::<&str>,
+    )?;
+    let language_submenu = Submenu::with_items(
+        app,
+        labels.language,
+        true,
+        &[&language_de, &language_en, &language_es, &language_fr, &language_it],
+    )?;
     let threshold_items = threshold_values
         .iter()
         .map(|value| {
@@ -242,21 +308,23 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
         .iter()
         .map(|(_, item)| item as &dyn tauri::menu::IsMenuItem<_>)
         .collect::<Vec<_>>();
-    let threshold_submenu = Submenu::with_items(app, "Seuil d'alerte", true, &threshold_submenu_items)?;
+    let threshold_submenu = Submenu::with_items(app, labels.threshold, true, &threshold_submenu_items)?;
     let settings_submenu = Submenu::with_items(
         app,
-        "Reglages",
+        labels.settings,
         true,
         &[
             &launch_on_startup,
             &start_minimized,
             &low_battery_notifications,
             &PredefinedMenuItem::separator(app)?,
+            &language_submenu,
+            &PredefinedMenuItem::separator(app)?,
             &threshold_submenu,
         ],
     )?;
     let separator = PredefinedMenuItem::separator(app)?;
-    let quit = MenuItem::with_id(app, "quit", "Quitter", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", labels.quit, true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
         &[&open, &hide, &refresh, &copy_diagnostics, &settings_submenu, &separator, &quit],
@@ -287,9 +355,22 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
             }
         })
         .on_menu_event({
+            let open = open.clone();
+            let hide = hide.clone();
+            let refresh = refresh.clone();
+            let copy_diagnostics = copy_diagnostics.clone();
             let launch_on_startup = launch_on_startup.clone();
             let start_minimized = start_minimized.clone();
             let low_battery_notifications = low_battery_notifications.clone();
+            let language_submenu = language_submenu.clone();
+            let threshold_submenu = threshold_submenu.clone();
+            let settings_submenu = settings_submenu.clone();
+            let quit = quit.clone();
+            let language_de = language_de.clone();
+            let language_en = language_en.clone();
+            let language_es = language_es.clone();
+            let language_fr = language_fr.clone();
+            let language_it = language_it.clone();
             let threshold_items = threshold_items.clone();
 
             move |app, event| match event.id().as_ref() {
@@ -333,6 +414,141 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                     let next_enabled = !load_bool_setting(app, LOW_BATTERY_NOTIFICATIONS_KEY, true);
                     if save_bool_setting(app, LOW_BATTERY_NOTIFICATIONS_KEY, next_enabled).is_ok() {
                         let _ = low_battery_notifications.set_checked(next_enabled);
+                        emit_settings_updated(app);
+                    }
+                }
+                "settings_language_de" => {
+                    if save_string_setting(app, LANGUAGE_KEY, "de").is_ok() {
+                        set_language_menu_checked(
+                            &language_de,
+                            &language_en,
+                            &language_es,
+                            &language_fr,
+                            &language_it,
+                            "de",
+                        );
+                        apply_tray_menu_language(
+                            &open,
+                            &hide,
+                            &refresh,
+                            &copy_diagnostics,
+                            &launch_on_startup,
+                            &start_minimized,
+                            &low_battery_notifications,
+                            &language_submenu,
+                            &threshold_submenu,
+                            &settings_submenu,
+                            &quit,
+                            "de",
+                        );
+                        emit_settings_updated(app);
+                    }
+                }
+                "settings_language_en" => {
+                    if save_string_setting(app, LANGUAGE_KEY, "en").is_ok() {
+                        set_language_menu_checked(
+                            &language_de,
+                            &language_en,
+                            &language_es,
+                            &language_fr,
+                            &language_it,
+                            "en",
+                        );
+                        apply_tray_menu_language(
+                            &open,
+                            &hide,
+                            &refresh,
+                            &copy_diagnostics,
+                            &launch_on_startup,
+                            &start_minimized,
+                            &low_battery_notifications,
+                            &language_submenu,
+                            &threshold_submenu,
+                            &settings_submenu,
+                            &quit,
+                            "en",
+                        );
+                        emit_settings_updated(app);
+                    }
+                }
+                "settings_language_es" => {
+                    if save_string_setting(app, LANGUAGE_KEY, "es").is_ok() {
+                        set_language_menu_checked(
+                            &language_de,
+                            &language_en,
+                            &language_es,
+                            &language_fr,
+                            &language_it,
+                            "es",
+                        );
+                        apply_tray_menu_language(
+                            &open,
+                            &hide,
+                            &refresh,
+                            &copy_diagnostics,
+                            &launch_on_startup,
+                            &start_minimized,
+                            &low_battery_notifications,
+                            &language_submenu,
+                            &threshold_submenu,
+                            &settings_submenu,
+                            &quit,
+                            "es",
+                        );
+                        emit_settings_updated(app);
+                    }
+                }
+                "settings_language_fr" => {
+                    if save_string_setting(app, LANGUAGE_KEY, "fr").is_ok() {
+                        set_language_menu_checked(
+                            &language_de,
+                            &language_en,
+                            &language_es,
+                            &language_fr,
+                            &language_it,
+                            "fr",
+                        );
+                        apply_tray_menu_language(
+                            &open,
+                            &hide,
+                            &refresh,
+                            &copy_diagnostics,
+                            &launch_on_startup,
+                            &start_minimized,
+                            &low_battery_notifications,
+                            &language_submenu,
+                            &threshold_submenu,
+                            &settings_submenu,
+                            &quit,
+                            "fr",
+                        );
+                        emit_settings_updated(app);
+                    }
+                }
+                "settings_language_it" => {
+                    if save_string_setting(app, LANGUAGE_KEY, "it").is_ok() {
+                        set_language_menu_checked(
+                            &language_de,
+                            &language_en,
+                            &language_es,
+                            &language_fr,
+                            &language_it,
+                            "it",
+                        );
+                        apply_tray_menu_language(
+                            &open,
+                            &hide,
+                            &refresh,
+                            &copy_diagnostics,
+                            &launch_on_startup,
+                            &start_minimized,
+                            &low_battery_notifications,
+                            &language_submenu,
+                            &threshold_submenu,
+                            &settings_submenu,
+                            &quit,
+                            "it",
+                        );
                         emit_settings_updated(app);
                     }
                 }
@@ -820,6 +1036,10 @@ fn ensure_default_settings(app: &mut tauri::App) -> tauri::Result<()> {
         store.set(LOW_BATTERY_THRESHOLD_KEY.to_string(), serde_json::json!(20));
     }
 
+    if store.get(LANGUAGE_KEY).is_none() {
+        store.set(LANGUAGE_KEY.to_string(), serde_json::json!("en"));
+    }
+
     store
         .save()
         .map_err(|error| std::io::Error::other(error.to_string()))?;
@@ -829,6 +1049,120 @@ fn ensure_default_settings(app: &mut tauri::App) -> tauri::Result<()> {
 
 fn emit_settings_updated(app: &AppHandle) {
     let _ = app.emit(SETTINGS_UPDATED_EVENT, ());
+}
+
+fn tray_menu_labels(language: &str) -> TrayMenuLabels {
+    match language {
+        "de" => TrayMenuLabels {
+            open: "Offnen",
+            hide: "Ausblenden",
+            refresh: "Aktualisieren",
+            copy_diagnostics: "Diagnose kopieren",
+            launch_on_startup: "Mit Windows starten",
+            start_minimized: "Minimiert starten",
+            low_battery_notifications: "Benachrichtigung bei niedrigem Akkustand",
+            language: "Sprache",
+            threshold: "Warnschwelle",
+            settings: "Einstellungen",
+            quit: "Beenden",
+        },
+        "es" => TrayMenuLabels {
+            open: "Abrir",
+            hide: "Ocultar",
+            refresh: "Actualizar",
+            copy_diagnostics: "Copiar diagnostico",
+            launch_on_startup: "Iniciar con Windows",
+            start_minimized: "Iniciar minimizado",
+            low_battery_notifications: "Notificaciones de bateria baja",
+            language: "Idioma",
+            threshold: "Umbral de alerta",
+            settings: "Ajustes",
+            quit: "Salir",
+        },
+        "fr" => TrayMenuLabels {
+            open: "Ouvrir",
+            hide: "Masquer",
+            refresh: "Actualiser",
+            copy_diagnostics: "Copier le diagnostic",
+            launch_on_startup: "Lancer avec Windows",
+            start_minimized: "Demarrage discret",
+            low_battery_notifications: "Notifications batterie faible",
+            language: "Langue",
+            threshold: "Seuil d'alerte",
+            settings: "Reglages",
+            quit: "Quitter",
+        },
+        "it" => TrayMenuLabels {
+            open: "Apri",
+            hide: "Nascondi",
+            refresh: "Aggiorna",
+            copy_diagnostics: "Copia diagnostica",
+            launch_on_startup: "Avvia con Windows",
+            start_minimized: "Avvio ridotto",
+            low_battery_notifications: "Notifiche batteria scarica",
+            language: "Lingua",
+            threshold: "Soglia di avviso",
+            settings: "Impostazioni",
+            quit: "Esci",
+        },
+        _ => TrayMenuLabels {
+            open: "Open",
+            hide: "Hide",
+            refresh: "Refresh",
+            copy_diagnostics: "Copy diagnostics",
+            launch_on_startup: "Launch with Windows",
+            start_minimized: "Start minimized",
+            low_battery_notifications: "Low battery notifications",
+            language: "Language",
+            threshold: "Alert threshold",
+            settings: "Settings",
+            quit: "Quit",
+        },
+    }
+}
+
+fn apply_tray_menu_language<R: tauri::Runtime>(
+    open: &MenuItem<R>,
+    hide: &MenuItem<R>,
+    refresh: &MenuItem<R>,
+    copy_diagnostics: &MenuItem<R>,
+    launch_on_startup: &CheckMenuItem<R>,
+    start_minimized: &CheckMenuItem<R>,
+    low_battery_notifications: &CheckMenuItem<R>,
+    language_submenu: &Submenu<R>,
+    threshold_submenu: &Submenu<R>,
+    settings_submenu: &Submenu<R>,
+    quit: &MenuItem<R>,
+    language: &str,
+) {
+    let labels = tray_menu_labels(language);
+
+    let _ = open.set_text(labels.open);
+    let _ = hide.set_text(labels.hide);
+    let _ = refresh.set_text(labels.refresh);
+    let _ = copy_diagnostics.set_text(labels.copy_diagnostics);
+    let _ = launch_on_startup.set_text(labels.launch_on_startup);
+    let _ = start_minimized.set_text(labels.start_minimized);
+    let _ = low_battery_notifications.set_text(labels.low_battery_notifications);
+    let _ = language_submenu.set_text(labels.language);
+    let _ = threshold_submenu.set_text(labels.threshold);
+    let _ = settings_submenu.set_text(labels.settings);
+    let _ = quit.set_text(labels.quit);
+}
+
+fn set_language_menu_checked<R: tauri::Runtime>(
+    language_de: &CheckMenuItem<R>,
+    language_en: &CheckMenuItem<R>,
+    language_es: &CheckMenuItem<R>,
+    language_fr: &CheckMenuItem<R>,
+    language_it: &CheckMenuItem<R>,
+    selected_language: &str,
+) {
+    let _ = language_de.set_checked(selected_language == "de");
+    let _ = language_en.set_checked(selected_language == "en");
+    let _ = language_es.set_checked(selected_language == "es");
+    let _ = language_fr.set_checked(selected_language == "fr");
+    let _ = language_it.set_checked(selected_language == "it");
 }
 
 fn build_diagnostics_report(snapshot: &BatterySnapshot) -> String {
@@ -925,6 +1259,15 @@ fn load_u8_setting(app: &AppHandle, key: &str, default: u8) -> u8 {
     }
 }
 
+fn load_string_setting(app: &AppHandle, key: &str) -> Option<String> {
+    match app.store(SETTINGS_FILE) {
+        Ok(store) => store
+            .get(key)
+            .and_then(|value| value.as_str().map(ToString::to_string)),
+        Err(_) => None,
+    }
+}
+
 fn save_bool_setting(app: &AppHandle, key: &str, value: bool) -> Result<(), String> {
     let store = app.store(SETTINGS_FILE).map_err(|error| error.to_string())?;
     store.set(key.to_string(), serde_json::json!(value));
@@ -932,6 +1275,12 @@ fn save_bool_setting(app: &AppHandle, key: &str, value: bool) -> Result<(), Stri
 }
 
 fn save_u8_setting(app: &AppHandle, key: &str, value: u8) -> Result<(), String> {
+    let store = app.store(SETTINGS_FILE).map_err(|error| error.to_string())?;
+    store.set(key.to_string(), serde_json::json!(value));
+    store.save().map_err(|error| error.to_string())
+}
+
+fn save_string_setting(app: &AppHandle, key: &str, value: &str) -> Result<(), String> {
     let store = app.store(SETTINGS_FILE).map_err(|error| error.to_string())?;
     store.set(key.to_string(), serde_json::json!(value));
     store.save().map_err(|error| error.to_string())

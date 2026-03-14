@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import {
@@ -10,6 +10,7 @@ import { isPermissionGranted, requestPermission, sendNotification } from '@tauri
 import { Store } from '@tauri-apps/plugin-store';
 import { ReplaySubject, Subject } from 'rxjs';
 import type { BatteryHistoryEntry, BatterySnapshot } from './battery.models';
+import { I18nService } from './i18n.service';
 
 const SETTINGS_FILE = 'settings.json';
 const START_MINIMIZED_KEY = 'startMinimizedOnAutostart';
@@ -20,6 +21,7 @@ const SETTINGS_UPDATED_EVENT = 'settings-updated';
 
 @Injectable({ providedIn: 'root' })
 export class BatteryService {
+  private readonly i18n = inject(I18nService);
   private readonly updatesSubject = new ReplaySubject<BatterySnapshot>(1);
   private readonly settingsUpdatesSubject = new Subject<void>();
   private readonly previewSnapshot = this.createPreviewSnapshot();
@@ -137,8 +139,11 @@ export class BatteryService {
       }
 
       await sendNotification({
-        title: 'ATK Tray Monitor',
-        body: `${deviceLabel} est a ${level}% de batterie.`,
+        title: this.i18n.t('notifications.lowBatteryTitle'),
+        body: this.i18n.t('notifications.lowBatteryBody', {
+          deviceLabel,
+          level,
+        }),
       });
 
       return true;
@@ -196,7 +201,7 @@ export class BatteryService {
       updatedAt,
       source: snapshot.source ?? 'browser-preview',
       deviceLabel: snapshot.deviceLabel ?? 'ATK F1',
-      status: snapshot.status ?? 'Aucune information disponible.',
+      status: snapshot.status ?? this.i18n.t('battery.noInfoStatus'),
       connected: Boolean(snapshot.connected),
       isCharging: Boolean(snapshot.isCharging),
       diagnostics: {
@@ -216,7 +221,7 @@ export class BatteryService {
       voltage: 3.9,
       isCharging: false,
       connected: true,
-      status: 'Mode apercu navigateur. Lance Tauri pour lire la vraie batterie.',
+      status: this.i18n.t('battery.previewStatus'),
       deviceLabel: 'ATK F1 preview',
       updatedAt: new Date().toISOString(),
       source: 'browser-preview',

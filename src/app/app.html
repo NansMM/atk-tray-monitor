@@ -8,7 +8,7 @@
 
       <header class="relative flex items-start justify-between gap-4">
         <div>
-          <p class="eyebrow-title text-cyan-100/70">ATK tray monitor</p>
+          <p class="eyebrow-title text-cyan-100/70">{{ i18n.t('app.name') }}</p>
           <h1 class="mt-3 font-['Aptos_Display','Segoe_UI_Variable_Display'] text-3xl font-semibold tracking-tight text-white">
             {{ deviceTitle() }}
           </h1>
@@ -23,7 +23,7 @@
       </header>
 
       <section class="relative mt-7 grid gap-4 rounded-[28px] border border-white/8 bg-white/4 p-5 text-center">
-        <p class="section-title">Niveau de batterie</p>
+        <p class="section-title">{{ i18n.t('battery.levelTitle') }}</p>
         <div class="flex justify-center">
           <div class="relative grid h-44 w-44 place-items-center rounded-full border border-white/8 bg-slate-950/70">
             <svg class="h-40 w-40 -rotate-90" viewBox="0 0 120 120" aria-hidden="true">
@@ -57,7 +57,7 @@
       <section class="mt-5 grid gap-3 text-sm text-slate-300">
         <div class="rounded-2xl border border-white/8 bg-white/4 px-4 py-3">
           <div class="flex items-center justify-between gap-3">
-            <p class="section-title text-left">Historique batterie</p>
+            <p class="section-title text-left">{{ i18n.t('battery.historyTitle') }}</p>
             <span class="text-[0.7rem] uppercase tracking-[0.22em] text-slate-500">{{ batteryHistory().length }}/10</span>
           </div>
 
@@ -79,13 +79,13 @@
                       [attr.opacity]="hoveredHistoryPoint()?.updatedAt === point.updatedAt ? '1' : '0.82'"
                       [attr.vector-effect]="'non-scaling-stroke'"
                       [attr.tabindex]="0"
-                      [attr.aria-label]="point.level + '% a ' + point.timeLabel"
+                      [attr.aria-label]="historyPointLabel(point.level, point.timeLabel)"
                       (mouseenter)="setHoveredHistoryIndex($index)"
                       (mouseleave)="setHoveredHistoryIndex(null)"
                       (focus)="setHoveredHistoryIndex($index)"
                       (blur)="setHoveredHistoryIndex(null)"
                     >
-                      <title>{{ point.level }}% a {{ point.timeLabel }}</title>
+                      <title>{{ historyPointLabel(point.level, point.timeLabel) }}</title>
                     </circle>
                   }
                 </svg>
@@ -102,13 +102,13 @@
                 <span>{{ historyLabels().last }}</span>
               </div>
               <div class="mt-2 flex items-center gap-3 text-[0.68rem] uppercase tracking-[0.16em] text-slate-500">
-                <span>Min {{ historyLegend().min }}</span>
-                <span>Max {{ historyLegend().max }}</span>
-                <span>Actuel {{ historyLegend().latest }}</span>
+                <span>{{ historyLegendLabel('min', historyLegend().min) }}</span>
+                <span>{{ historyLegendLabel('max', historyLegend().max) }}</span>
+                <span>{{ historyLegendLabel('current', historyLegend().latest) }}</span>
               </div>
             </div>
           } @else {
-            <p class="mt-3 text-sm text-slate-400">L'historique s'affichera apres quelques lectures reussies.</p>
+            <p class="mt-3 text-sm text-slate-400">{{ i18n.t('battery.historyEmpty') }}</p>
           }
         </div>
       </section>

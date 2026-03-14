@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
 import { BatteryService } from './battery.service';
 import type { BatteryHistoryEntry, BatterySnapshot } from './battery.models';
+import { I18nService } from './i18n.service';
 
 type BatteryHistoryPoint = BatteryHistoryEntry & {
   x: number;
@@ -23,6 +24,7 @@ export class App {
   private static readonly REFRESH_INTERVAL_MS = 20_000;
   private readonly batteryService = inject(BatteryService);
   private readonly destroyRef = inject(DestroyRef);
+  protected readonly i18n = inject(I18nService);
   private readonly ringLength = 339.292;
 
   protected readonly battery = signal<BatterySnapshot | null>(null);
@@ -48,7 +50,7 @@ export class App {
       return deviceLabel;
     }
 
-    return 'Batterie F1';
+    return this.i18n.t('battery.fallbackDeviceTitle');
   });
   protected readonly ringOffset = computed(
     () => this.ringLength - (this.ringLength * this.percentage()) / 100,
@@ -125,18 +127,20 @@ export class App {
     const snapshot = this.battery();
 
     if (!snapshot) {
-      return 'Connexion';
+      return this.i18n.t('status.connecting');
     }
 
     if (snapshot.source === 'browser-preview') {
-      return 'Preview';
+      return this.i18n.t('status.preview');
     }
 
     if (!snapshot.connected) {
-      return 'Hors ligne';
+      return this.i18n.t('status.offline');
     }
 
-    return snapshot.isCharging ? 'Charge' : 'Batterie';
+    return snapshot.isCharging
+      ? this.i18n.t('status.charging')
+      : this.i18n.t('status.battery');
   });
   protected readonly statusTagTone = computed(() => {
     const snapshot = this.battery();
@@ -208,7 +212,11 @@ export class App {
       this.applySnapshot(snapshot);
       this.errorMessage.set(snapshot.connected ? null : snapshot.status);
     } catch (error) {
-      this.errorMessage.set(error instanceof Error ? error.message : 'Echec de la synchronisation.');
+      this.errorMessage.set(
+        error instanceof Error
+          ? error.message
+          : this.i18n.t('errors.syncFailed'),
+      );
     } finally {
       this.loading.set(false);
       this.syncing.set(false);
@@ -366,6 +374,24 @@ export class App {
     void this.batteryService.setBatteryHistory(nextHistory);
   }
 
+  protected historyPointLabel(level: number, timeLabel: string): string {
+    return this.i18n.t('history.pointLabel', {
+      level,
+      time: timeLabel,
+    });
+  }
+
+  protected historyLegendLabel(kind: 'min' | 'max' | 'current', value: string): string {
+    switch (kind) {
+      case 'min':
+        return this.i18n.t('history.min', { value });
+      case 'max':
+        return this.i18n.t('history.max', { value });
+      default:
+        return this.i18n.t('history.current', { value });
+    }
+  }
+
   private formatTime(value?: string): string {
     if (!value) {
       return '--:--';
@@ -377,7 +403,7 @@ export class App {
       return '--:--';
     }
 
-    return date.toLocaleTimeString('fr-FR', {
+    return date.toLocaleTimeString(this.i18n.locale(), {
       hour: '2-digit',
       minute: '2-digit',
     });
