@@ -51,6 +51,7 @@ struct TrayMenuLabels {
     hide: &'static str,
     refresh: &'static str,
     copy_diagnostics: &'static str,
+    version: &'static str,
     launch_on_startup: &'static str,
     start_minimized: &'static str,
     low_battery_notifications: &'static str,
@@ -312,6 +313,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
         .filter(|value| SUPPORTED_LANGUAGES.contains(&value.as_str()))
         .unwrap_or_else(|| "en".to_string());
     let labels = tray_menu_labels(&current_language);
+    let app_version = app.package_info().version.to_string();
     let open = MenuItem::with_id(app, "open", labels.open, true, None::<&str>)?;
     let hide = MenuItem::with_id(app, "hide", labels.hide, true, None::<&str>)?;
     let refresh = MenuItem::with_id(app, "refresh", labels.refresh, true, None::<&str>)?;
@@ -320,6 +322,13 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
         "copy_diagnostics",
         labels.copy_diagnostics,
         true,
+        None::<&str>,
+    )?;
+    let version = MenuItem::with_id(
+        app,
+        "version",
+        format_version_menu_text(labels.version, &app_version),
+        false,
         None::<&str>,
     )?;
     let launch_on_startup = CheckMenuItem::with_id(
@@ -431,7 +440,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
     let quit = MenuItem::with_id(app, "quit", labels.quit, true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
-        &[&open, &hide, &refresh, &copy_diagnostics, &settings_submenu, &separator, &quit],
+        &[&open, &hide, &refresh, &copy_diagnostics, &settings_submenu, &separator, &version, &quit],
     )?;
 
     let tray_builder = TrayIconBuilder::with_id("main")
@@ -458,6 +467,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
             let hide = hide.clone();
             let refresh = refresh.clone();
             let copy_diagnostics = copy_diagnostics.clone();
+            let version = version.clone();
             let launch_on_startup = launch_on_startup.clone();
             let start_minimized = start_minimized.clone();
             let low_battery_notifications = low_battery_notifications.clone();
@@ -465,6 +475,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
             let threshold_submenu = threshold_submenu.clone();
             let settings_submenu = settings_submenu.clone();
             let quit = quit.clone();
+            let app_version = app_version.clone();
             let language_de = language_de.clone();
             let language_en = language_en.clone();
             let language_es = language_es.clone();
@@ -531,6 +542,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &hide,
                             &refresh,
                             &copy_diagnostics,
+                            &version,
                             &launch_on_startup,
                             &start_minimized,
                             &low_battery_notifications,
@@ -538,6 +550,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &threshold_submenu,
                             &settings_submenu,
                             &quit,
+                            &app_version,
                             "de",
                         );
                         emit_settings_updated(app);
@@ -558,6 +571,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &hide,
                             &refresh,
                             &copy_diagnostics,
+                            &version,
                             &launch_on_startup,
                             &start_minimized,
                             &low_battery_notifications,
@@ -565,6 +579,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &threshold_submenu,
                             &settings_submenu,
                             &quit,
+                            &app_version,
                             "en",
                         );
                         emit_settings_updated(app);
@@ -585,6 +600,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &hide,
                             &refresh,
                             &copy_diagnostics,
+                            &version,
                             &launch_on_startup,
                             &start_minimized,
                             &low_battery_notifications,
@@ -592,6 +608,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &threshold_submenu,
                             &settings_submenu,
                             &quit,
+                            &app_version,
                             "es",
                         );
                         emit_settings_updated(app);
@@ -612,6 +629,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &hide,
                             &refresh,
                             &copy_diagnostics,
+                            &version,
                             &launch_on_startup,
                             &start_minimized,
                             &low_battery_notifications,
@@ -619,6 +637,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &threshold_submenu,
                             &settings_submenu,
                             &quit,
+                            &app_version,
                             "fr",
                         );
                         emit_settings_updated(app);
@@ -639,6 +658,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &hide,
                             &refresh,
                             &copy_diagnostics,
+                            &version,
                             &launch_on_startup,
                             &start_minimized,
                             &low_battery_notifications,
@@ -646,6 +666,7 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                             &threshold_submenu,
                             &settings_submenu,
                             &quit,
+                            &app_version,
                             "it",
                         );
                         emit_settings_updated(app);
@@ -1301,6 +1322,7 @@ fn tray_menu_labels(language: &str) -> TrayMenuLabels {
             hide: "Ausblenden",
             refresh: "Aktualisieren",
             copy_diagnostics: "Diagnose kopieren",
+            version: "Version",
             launch_on_startup: "Mit Windows starten",
             start_minimized: "Minimiert starten",
             low_battery_notifications: "Benachrichtigung bei niedrigem Akkustand",
@@ -1314,6 +1336,7 @@ fn tray_menu_labels(language: &str) -> TrayMenuLabels {
             hide: "Ocultar",
             refresh: "Actualizar",
             copy_diagnostics: "Copiar diagnostico",
+            version: "Version",
             launch_on_startup: "Iniciar con Windows",
             start_minimized: "Iniciar minimizado",
             low_battery_notifications: "Notificaciones de bateria baja",
@@ -1327,6 +1350,7 @@ fn tray_menu_labels(language: &str) -> TrayMenuLabels {
             hide: "Masquer",
             refresh: "Actualiser",
             copy_diagnostics: "Copier le diagnostic",
+            version: "Version",
             launch_on_startup: "Lancer avec Windows",
             start_minimized: "Demarrage discret",
             low_battery_notifications: "Notifications batterie faible",
@@ -1340,6 +1364,7 @@ fn tray_menu_labels(language: &str) -> TrayMenuLabels {
             hide: "Nascondi",
             refresh: "Aggiorna",
             copy_diagnostics: "Copia diagnostica",
+            version: "Versione",
             launch_on_startup: "Avvia con Windows",
             start_minimized: "Avvio ridotto",
             low_battery_notifications: "Notifiche batteria scarica",
@@ -1353,6 +1378,7 @@ fn tray_menu_labels(language: &str) -> TrayMenuLabels {
             hide: "Hide",
             refresh: "Refresh",
             copy_diagnostics: "Copy diagnostics",
+            version: "Version",
             launch_on_startup: "Launch with Windows",
             start_minimized: "Start minimized",
             low_battery_notifications: "Low battery notifications",
@@ -1364,11 +1390,16 @@ fn tray_menu_labels(language: &str) -> TrayMenuLabels {
     }
 }
 
+fn format_version_menu_text(label: &str, version: &str) -> String {
+    format!("{label} {version}")
+}
+
 fn apply_tray_menu_language<R: tauri::Runtime>(
     open: &MenuItem<R>,
     hide: &MenuItem<R>,
     refresh: &MenuItem<R>,
     copy_diagnostics: &MenuItem<R>,
+    version: &MenuItem<R>,
     launch_on_startup: &CheckMenuItem<R>,
     start_minimized: &CheckMenuItem<R>,
     low_battery_notifications: &CheckMenuItem<R>,
@@ -1376,6 +1407,7 @@ fn apply_tray_menu_language<R: tauri::Runtime>(
     threshold_submenu: &Submenu<R>,
     settings_submenu: &Submenu<R>,
     quit: &MenuItem<R>,
+    app_version: &str,
     language: &str,
 ) {
     let labels = tray_menu_labels(language);
@@ -1384,6 +1416,7 @@ fn apply_tray_menu_language<R: tauri::Runtime>(
     let _ = hide.set_text(labels.hide);
     let _ = refresh.set_text(labels.refresh);
     let _ = copy_diagnostics.set_text(labels.copy_diagnostics);
+    let _ = version.set_text(format_version_menu_text(labels.version, app_version));
     let _ = launch_on_startup.set_text(labels.launch_on_startup);
     let _ = start_minimized.set_text(labels.start_minimized);
     let _ = low_battery_notifications.set_text(labels.low_battery_notifications);

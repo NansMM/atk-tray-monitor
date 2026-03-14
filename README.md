@@ -92,7 +92,7 @@ npm run tauri:build
 
 GitHub Releases flow:
 
-- push a tag like `v0.1.0`
+- push a tag like `v1.0.3`
 - the `Release Desktop` workflow builds the app on GitHub Actions
 - `tauri-action` uploads the installers, signatures, and `latest.json` to the GitHub release
 - installed apps query `releases/latest/download/latest.json`
@@ -113,7 +113,7 @@ Notes:
 
 - `CI` runs on every `push` to `main` and on every `pull_request`.
 - This workflow installs Node.js 22 and stable Rust, then runs `npm run build` and `cargo check --manifest-path src-tauri/Cargo.toml`.
-- `Release Desktop` runs manually or on a `v*` tag such as `v0.1.0`.
+- `Release Desktop` runs manually or on a `v*` tag such as `v1.0.3`.
 - On tags, it uses `tauri-action` to publish the Windows installers, updater signatures, and `latest.json` to the GitHub release.
 
 ## Notes
