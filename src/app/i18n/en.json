@@ -7,6 +7,7 @@
     "historyTitle": "Battery history",
     "historyEmpty": "History will appear after a few successful readings.",
     "fallbackDeviceTitle": "ATK Battery",
+    "genericMouseTitle": "ATK Mouse",
     "noInfoStatus": "No information available.",
     "previewStatus": "Browser preview mode. Launch Tauri to read the real battery."
   },

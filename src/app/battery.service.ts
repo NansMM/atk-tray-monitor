@@ -138,10 +138,12 @@ export class BatteryService {
         return false;
       }
 
+      const localizedDeviceLabel = this.i18n.localizeDeviceLabel(deviceLabel);
+
       await sendNotification({
         title: this.i18n.t('notifications.lowBatteryTitle'),
         body: this.i18n.t('notifications.lowBatteryBody', {
-          deviceLabel,
+          deviceLabel: localizedDeviceLabel,
           level,
         }),
       });

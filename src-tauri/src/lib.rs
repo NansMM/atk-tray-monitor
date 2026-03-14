@@ -23,6 +23,7 @@ use tauri_plugin_store::StoreExt;
 
 const DEVICE_KEYWORDS: [&str; 4] = ["atk", "vxe", "leviatan", "mad r"];
 const DEFAULT_DEVICE_LABEL: &str = "ATK device";
+const GENERIC_MOUSE_LABEL: &str = "ATK mouse";
 const KNOWN_DEVICE_IDS: [(u16, u16); 2] = [(0x373B, 0x1031), (0x373B, 0x105B)];
 const KNOWN_VENDOR_IDS: [u16; 1] = [0x373B];
 const ATK_USAGE_PAGE: u16 = 0xFF00;
@@ -906,10 +907,19 @@ fn sanitize_device_label(label: &str) -> String {
         .to_string();
 
     if cleaned.is_empty() {
-        DEFAULT_DEVICE_LABEL.to_string()
-    } else {
-        cleaned
+        return DEFAULT_DEVICE_LABEL.to_string();
     }
+
+    let normalized = cleaned.to_ascii_lowercase();
+
+    if normalized.contains("dongle")
+        || normalized.contains("receiver")
+        || (normalized.contains("f1") && normalized.contains("leviatan"))
+    {
+        return GENERIC_MOUSE_LABEL.to_string();
+    }
+
+    cleaned
 }
 
 fn score_candidate(
@@ -919,7 +929,7 @@ fn score_candidate(
     usage: u16,
     combined: &str,
 ) -> u8 {
-    let mut score = 0;
+    let mut score: u8 = 0;
 
     if known_id {
         score += 100;
@@ -946,6 +956,17 @@ fn score_candidate(
         .any(|keyword| combined.contains(keyword))
     {
         score += 15;
+    }
+
+    if combined.contains("mouse") {
+        score += 10;
+    }
+
+    if combined.contains("dongle")
+        || combined.contains("receiver")
+        || combined.contains("light version")
+    {
+        score = score.saturating_sub(25);
     }
 
     score

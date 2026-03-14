@@ -293,7 +293,9 @@ export class App {
       return '';
     }
 
-    const cleaned = label
+    const localized = this.i18n.localizeDeviceLabel(label);
+
+    const cleaned = localized
       .replace(/\s*\[[^\]]+\]\s*$/u, '')
       .replace(/\s+/gu, ' ')
       .trim();

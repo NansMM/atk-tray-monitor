@@ -7,6 +7,7 @@
     "historyTitle": "Historique batterie",
     "historyEmpty": "L'historique s'affichera apres quelques lectures reussies.",
     "fallbackDeviceTitle": "Batterie ATK",
+    "genericMouseTitle": "Souris ATK",
     "noInfoStatus": "Aucune information disponible.",
     "previewStatus": "Mode apercu navigateur. Lance Tauri pour lire la vraie batterie."
   },

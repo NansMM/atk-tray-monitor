@@ -77,6 +77,20 @@ export class I18nService {
     });
   }
 
+  localizeDeviceLabel(label: string | null | undefined): string {
+    if (!label) {
+      return '';
+    }
+
+    const normalized = label.trim().toLowerCase();
+
+    if (normalized === 'atk mouse') {
+      return this.t('battery.genericMouseTitle');
+    }
+
+    return label;
+  }
+
   private resolveInitialLanguage(): SupportedLanguage {
     const storedLanguage = this.readStoredLanguage();
 

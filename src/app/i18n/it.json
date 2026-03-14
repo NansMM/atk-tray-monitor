@@ -7,6 +7,7 @@
     "historyTitle": "Cronologia batteria",
     "historyEmpty": "La cronologia apparira dopo alcune letture riuscite.",
     "fallbackDeviceTitle": "Batteria ATK",
+    "genericMouseTitle": "Mouse ATK",
     "noInfoStatus": "Nessuna informazione disponibile.",
     "previewStatus": "Modalita anteprima browser. Avvia Tauri per leggere la batteria reale."
   },
