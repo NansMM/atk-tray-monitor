@@ -30,6 +30,8 @@
   },
   "notifications": {
     "lowBatteryTitle": "ATK Tray Monitor",
-    "lowBatteryBody": "{{deviceLabel}} is at {{level}}% battery."
+    "lowBatteryBody": "{{deviceLabel}} is at {{level}}% battery.",
+    "updateReadyTitle": "ATK Tray Monitor update",
+    "updateInstalledBody": "Version {{version}} was installed. Restarting the app."
   }
 }

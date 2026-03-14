@@ -3,6 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 import { BatteryService } from './battery.service';
 import type { BatterySnapshot } from './battery.models';
+import { UpdateService } from './update.service';
 
 const previewSnapshot: BatterySnapshot = {
   level: 78,
@@ -52,6 +53,12 @@ function createBatteryServiceStub(): Pick<
   };
 }
 
+function createUpdateServiceStub(): Pick<UpdateService, 'start'> {
+  return {
+    start: () => undefined,
+  };
+}
+
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -60,6 +67,10 @@ describe('App', () => {
         {
           provide: BatteryService,
           useValue: createBatteryServiceStub(),
+        },
+        {
+          provide: UpdateService,
+          useValue: createUpdateServiceStub(),
         },
       ],
     }).compileComponents();

@@ -2,6 +2,7 @@ use arboard::Clipboard;
 use hidapi::HidApi;
 use libatk_rs::prelude::{Command, CommandDescriptor, CommandId, Device};
 use serde::Serialize;
+use std::env;
 use std::{
     collections::HashSet,
     sync::{
@@ -16,11 +17,12 @@ use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     webview::PageLoadEvent,
-    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, State,
+    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, State, Url,
     WindowEvent,
 };
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
 use tauri_plugin_store::StoreExt;
+use tauri_plugin_updater::UpdaterExt;
 
 const DEVICE_KEYWORDS: [&str; 4] = ["atk", "vxe", "leviatan", "mad r"];
 const DEFAULT_DEVICE_LABEL: &str = "ATK device";
@@ -40,6 +42,9 @@ const BATTERY_REFRESH_INTERVAL_SECONDS: u64 = 20;
 const SUPPORTED_LANGUAGES: [&str; 5] = ["de", "en", "es", "fr", "it"];
 const TRAY_ICON_SIZE: u32 = 32;
 const MAIN_WINDOW_WIDTH: f64 = 420.0;
+const EMBEDDED_UPDATER_PUBKEY: &str = include_str!("../updater-public.key");
+const DEFAULT_GITHUB_RELEASES_UPDATE_ENDPOINT: &str =
+    "https://github.com/NansMM/atk-tray-monitor/releases/latest/download/latest.json";
 
 struct TrayMenuLabels {
     open: &'static str,
@@ -137,6 +142,39 @@ fn fit_window_to_content(app: AppHandle, content_height: f64) -> Result<(), Stri
     position_window_near_tray(&app, &window, None, Some(target_physical_size))
 }
 
+#[tauri::command]
+fn restart_app(app: AppHandle) {
+    app.restart();
+}
+
+#[tauri::command]
+async fn install_available_update(app: AppHandle) -> Result<Option<String>, String> {
+    let config = load_updater_config().ok_or_else(|| "Updater disabled".to_string())?;
+    let update = app
+        .updater_builder()
+        .pubkey(config.pubkey)
+        .endpoints(config.endpoints)
+        .map_err(|error| error.to_string())?
+        .build()
+        .map_err(|error| error.to_string())?
+        .check()
+        .await
+        .map_err(|error| error.to_string())?;
+
+    let Some(update) = update else {
+        return Ok(None);
+    };
+
+    let version = update.version.clone();
+
+    update
+        .download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|error| error.to_string())?;
+
+    Ok(Some(version))
+}
+
 pub fn run() {
     let launch_args: Vec<String> = std::env::args().collect();
     let launched_from_autostart = launch_args.iter().any(|arg| arg == AUTOSTART_FLAG);
@@ -176,6 +214,14 @@ pub fn run() {
             )),
         })
         .setup(move |app| {
+            if let Some(config) = load_updater_config() {
+                app.handle().plugin(
+                    tauri_plugin_updater::Builder::new()
+                        .pubkey(config.pubkey)
+                        .build(),
+                )?;
+            }
+
             build_tray(app)?;
             ensure_default_settings(app)?;
             let start_minimized_on_autostart =
@@ -221,10 +267,44 @@ pub fn run() {
             refresh_battery_status,
             hide_window,
             show_window,
-            fit_window_to_content
+            fit_window_to_content,
+            restart_app,
+            install_available_update
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+struct UpdaterConfig {
+    pubkey: String,
+    endpoints: Vec<Url>,
+}
+
+fn load_updater_config() -> Option<UpdaterConfig> {
+    let pubkey = option_env!("TAURI_UPDATER_PUBKEY")
+        .map(str::to_owned)
+        .or_else(|| env::var("TAURI_UPDATER_PUBKEY").ok())
+        .or_else(|| {
+            let embedded_pubkey = EMBEDDED_UPDATER_PUBKEY.trim();
+            (!embedded_pubkey.is_empty()).then(|| embedded_pubkey.to_owned())
+        })?;
+    let endpoints_source = option_env!("TAURI_UPDATER_ENDPOINTS")
+        .map(str::to_owned)
+        .or_else(|| env::var("TAURI_UPDATER_ENDPOINTS").ok())
+        .unwrap_or_else(|| DEFAULT_GITHUB_RELEASES_UPDATE_ENDPOINT.to_string());
+    let endpoints = endpoints_source
+        .split(';')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(Url::parse)
+        .collect::<Result<Vec<_>, _>>()
+        .ok()?;
+
+    if endpoints.is_empty() {
+        return None;
+    }
+
+    Some(UpdaterConfig { pubkey, endpoints })
 }
 
 fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {

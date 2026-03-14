@@ -13,6 +13,7 @@ yarn-error.log
 
 # Rust / Tauri
 /src-tauri/target
+/.secrets
 
 # IDEs and editors
 .idea/

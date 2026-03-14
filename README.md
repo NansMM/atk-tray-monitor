@@ -26,6 +26,7 @@ Lightweight Windows application for monitoring the battery of ATK-compatible mic
 - Optional auto-start with Windows
 - Main settings exposed in the tray menu
 - Configurable low-battery notifications
+- Optional automatic desktop updates through the Tauri updater plugin
 
 ## Battery reading
 
@@ -66,12 +67,54 @@ Desktop build:
 npm run tauri:build
 ```
 
+## Auto-update setup
+
+The project is configured to use GitHub Releases as the update source.
+
+Default updater endpoint:
+
+```text
+https://github.com/NansMM/atk-tray-monitor/releases/latest/download/latest.json
+```
+
+What must exist at build time:
+
+- `TAURI_SIGNING_PRIVATE_KEY` or `TAURI_SIGNING_PRIVATE_KEY_PATH`: private key used by Tauri to sign updater artifacts
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`: optional password for that private key
+
+Local PowerShell example:
+
+```powershell
+$env:TAURI_SIGNING_PRIVATE_KEY_PATH = (Resolve-Path .\.secrets\tauri-updater.key).Path
+$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = "<your-key-password>"
+npm run tauri:build
+```
+
+GitHub Releases flow:
+
+- push a tag like `v0.1.0`
+- the `Release Desktop` workflow builds the app on GitHub Actions
+- `tauri-action` uploads the installers, signatures, and `latest.json` to the GitHub release
+- installed apps query `releases/latest/download/latest.json`
+
+Required GitHub repository secrets:
+
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
+Notes:
+
+- The updater public key is committed in `src-tauri/updater-public.key`, so only the private signing material stays in GitHub secrets.
+- `bundle.createUpdaterArtifacts` is enabled, so release builds generate updater signatures alongside the normal installers.
+- The Angular frontend checks for updates automatically a few seconds after startup, then periodically while the app remains open.
+- `TAURI_UPDATER_ENDPOINTS` remains overridable, but defaults to the GitHub Releases endpoint above.
+
 ## GitHub Actions
 
 - `CI` runs on every `push` to `main` and on every `pull_request`.
 - This workflow installs Node.js 22 and stable Rust, then runs `npm run build` and `cargo check --manifest-path src-tauri/Cargo.toml`.
 - `Release Desktop` runs manually or on a `v*` tag such as `v0.1.0`.
-- This workflow builds the Windows Tauri bundles (`.msi` and NSIS `.exe` installer), publishes them as artifacts, and automatically attaches them to the GitHub release on tags.
+- On tags, it uses `tauri-action` to publish the Windows installers, updater signatures, and `latest.json` to the GitHub release.
 
 ## Notes
 

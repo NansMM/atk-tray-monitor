@@ -15,6 +15,7 @@ import { interval } from 'rxjs';
 import { BatteryService } from './battery.service';
 import type { BatteryHistoryEntry, BatterySnapshot } from './battery.models';
 import { I18nService } from './i18n.service';
+import { UpdateService } from './update.service';
 
 type BatteryHistoryPoint = BatteryHistoryEntry & {
   x: number;
@@ -39,6 +40,7 @@ export class App {
   private readonly batteryService = inject(BatteryService);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly i18n = inject(I18nService);
+  private readonly updateService = inject(UpdateService);
   private readonly contentRoot = viewChild.required<ElementRef<HTMLElement>>('contentRoot');
   private readonly ringLength = 339.292;
   private lastSyncedWindowHeight = 0;
@@ -215,6 +217,7 @@ export class App {
     void this.loadBatteryHistory();
     void this.loadStartupPreference();
     void this.loadNotificationPreferences();
+    this.updateService.start();
 
     afterNextRender(() => {
       this.bindWindowHeightSync();
