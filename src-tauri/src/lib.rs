@@ -17,8 +17,8 @@ use tauri::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     webview::PageLoadEvent,
-    AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, Position, Size, State, Url,
-    WindowEvent,
+    AppHandle, Emitter, Listener, LogicalSize, Manager, PhysicalPosition, Position, Size, State,
+    Url, WindowEvent,
 };
 use tauri_plugin_autostart::ManagerExt as AutostartManagerExt;
 use tauri_plugin_store::StoreExt;
@@ -257,6 +257,15 @@ pub fn run() {
                 let state = app_handle.state::<AppState>();
                 let _ = refresh_snapshot(&app_handle, &state);
                 thread::sleep(Duration::from_secs(BATTERY_REFRESH_INTERVAL_SECONDS));
+            });
+
+            let tray_update_handle = app.handle().clone();
+            app.listen("snapshot-refreshed", move |_| {
+                let state = tray_update_handle.state::<AppState>();
+                let snapshot = state.latest_snapshot.lock().ok().map(|s| s.clone());
+                if let Some(snapshot) = snapshot {
+                    update_tray_visuals(&tray_update_handle, &snapshot);
+                }
             });
 
             let state = app.handle().state::<AppState>();
@@ -848,7 +857,7 @@ fn refresh_snapshot(
     }
 
     let _ = app.emit("battery-updated", &snapshot);
-    update_tray_visuals(app, &snapshot);
+    let _ = app.emit("snapshot-refreshed", ());
 
     Ok(snapshot)
 }
