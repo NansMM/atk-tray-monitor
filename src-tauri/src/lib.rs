@@ -12,6 +12,7 @@ use std::{
     thread,
     time::Duration,
 };
+use std::sync::mpsc;
 use tauri::{
     image::Image,
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
@@ -99,6 +100,7 @@ struct BatteryDiagnostics {
 
 struct AppState {
     latest_snapshot: Mutex<BatterySnapshot>,
+    scan_in_progress: AtomicBool,
 }
 
 struct GetBatteryStatus;
@@ -213,6 +215,7 @@ pub fn run() {
                 "bootstrap",
                 Vec::new(),
             )),
+            scan_in_progress: AtomicBool::new(false),
         })
         .setup(move |app| {
             if let Some(config) = load_updater_config() {
@@ -500,8 +503,11 @@ fn build_tray(app: &mut tauri::App) -> tauri::Result<()> {
                     let _ = hide_main_window(app);
                 }
                 "refresh" => {
-                    let state = app.state::<AppState>();
-                    let _ = refresh_snapshot(app, &state);
+                    let handle = app.clone();
+                    thread::spawn(move || {
+                        let state = handle.state::<AppState>();
+                        let _ = refresh_snapshot(&handle, &state);
+                    });
                 }
                 "copy_diagnostics" => {
                     let state = app.state::<AppState>();
@@ -823,43 +829,78 @@ fn size_to_physical_height(size: tauri::Size, scale_factor: f64) -> f64 {
     }
 }
 
+const HID_SCAN_TIMEOUT_SECONDS: u64 = 10;
+
 fn refresh_snapshot(
     app: &AppHandle,
     state: &State<'_, AppState>,
 ) -> Result<BatterySnapshot, String> {
-    let mut snapshot = match locate_candidates() {
-        Ok(candidates) => {
-            let diagnostics_candidates = candidates.clone();
+    if state.scan_in_progress.swap(true, Ordering::SeqCst) {
+        let latest = state
+            .latest_snapshot
+            .lock()
+            .map(|snapshot| snapshot.clone())
+            .map_err(|_| "Scan deja en cours.".to_string())?;
+        return Ok(latest);
+    }
 
-            match query_first_working_candidate(candidates) {
-                Ok(snapshot) => enrich_snapshot_with_diagnostics(
-                    snapshot,
-                    diagnostics_candidates,
-                    None,
-                ),
-                Err(error) => disconnected_snapshot(
-                    &error,
-                    DEFAULT_DEVICE_LABEL,
-                    "hid-scan",
-                    diagnostics_candidates,
-                ),
-            }
-        }
+    let scan_result = run_hid_scan_with_timeout();
+
+    let mut snapshot = match scan_result {
+        Ok(inner) => inner,
         Err(error) => disconnected_snapshot(&error, DEFAULT_DEVICE_LABEL, "hid-scan", Vec::new()),
     };
 
     {
         let mut latest_snapshot = state.latest_snapshot.lock().map_err(|_| {
+            state.scan_in_progress.store(false, Ordering::SeqCst);
             "Impossible de verrouiller l'etat de batterie pour la mise a jour.".to_string()
         })?;
         normalize_snapshot_level(&mut snapshot, &latest_snapshot);
         *latest_snapshot = snapshot.clone();
     }
 
+    state.scan_in_progress.store(false, Ordering::SeqCst);
+
     let _ = app.emit("battery-updated", &snapshot);
     let _ = app.emit("snapshot-refreshed", ());
 
     Ok(snapshot)
+}
+
+fn run_hid_scan_with_timeout() -> Result<BatterySnapshot, String> {
+    let (tx, rx) = mpsc::channel();
+
+    thread::spawn(move || {
+        let result = run_hid_scan();
+        let _ = tx.send(result);
+    });
+
+    rx.recv_timeout(Duration::from_secs(HID_SCAN_TIMEOUT_SECONDS))
+        .map_err(|_| "Le scan HID a depasse le delai d'attente.".to_string())?
+}
+
+fn run_hid_scan() -> Result<BatterySnapshot, String> {
+    match locate_candidates() {
+        Ok(candidates) => {
+            let diagnostics_candidates = candidates.clone();
+
+            match query_first_working_candidate(candidates) {
+                Ok(snapshot) => Ok(enrich_snapshot_with_diagnostics(
+                    snapshot,
+                    diagnostics_candidates,
+                    None,
+                )),
+                Err(error) => Ok(disconnected_snapshot(
+                    &error,
+                    DEFAULT_DEVICE_LABEL,
+                    "hid-scan",
+                    diagnostics_candidates,
+                )),
+            }
+        }
+        Err(error) => Ok(disconnected_snapshot(&error, DEFAULT_DEVICE_LABEL, "hid-scan", Vec::new())),
+    }
 }
 
 fn normalize_snapshot_level(snapshot: &mut BatterySnapshot, previous_snapshot: &BatterySnapshot) {
